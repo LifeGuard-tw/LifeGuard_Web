@@ -148,8 +148,8 @@
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', handleData);
                 
-                document.getElementById('status').innerText = "🚀 安全通道建立成功！連線穩固。";
-                document.getElementById('connectBtn').innerText = "通道已鎖定";
+                document.getElementById('status').innerText = "🚀 藍牙連線成功！";
+                document.getElementById('connectBtn').innerText = "連線已鎖定";
                 document.getElementById('connectBtn').style.background = "#28a745";
 
                 bluetoothDevice.addEventListener('gattserverdisconnected', () => {
