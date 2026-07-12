@@ -12,9 +12,12 @@
         }
         h1 { color: #00d2ff; margin-bottom: 5px; font-size: 28px; text-shadow: 0 0 10px rgba(0,210,255,0.3); }
         
-        /* 模式切換按鈕區 */
+        .sys-bar {
+            display: flex; gap: 15px; align-items: center; margin: 20px 0;
+        }
+
         .mode-toggles {
-            display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; justify-content: center;
+            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
         }
         .mode-btn {
             background-color: #1a1a1a; color: #888; border: 2px solid #333;
@@ -27,7 +30,6 @@
             box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
         }
 
-        /* 儀表板架構 */
         .container {
             display: flex; gap: 25px; max-width: 1000px; width: 100%; justify-content: center; flex-wrap: wrap;
         }
@@ -47,7 +49,6 @@
         #card-heart { border-color: #ff4757; box-shadow: 0 4px 15px rgba(255,71,87,0.1); }
         #heartRate { color: #ff4757; }
 
-        /* ✨ 新增：歷史排行榜樣式 */
         .leaderboard-panel {
             background-color: #161616; border: 2px solid #262626; border-radius: 18px;
             padding: 20px; width: 260px; box-shadow: 0 8px 20px rgba(0,0,0,0.6); flex: 1;
@@ -59,18 +60,27 @@
             display: flex; justify-content: space-between; padding: 8px 12px;
             border-bottom: 1px solid #222; font-size: 15px; font-family: monospace;
         }
-        .pwr-item:nth-child(1) { color: #ffd700; font-weight: bold; } /* 第一名金牌色 */
+        .pwr-item:nth-child(1) { color: #ffd700; font-weight: bold; }
         .pwr-item:nth-child(2) { color: #c0c0c0; }
         .pwr-item:nth-child(3) { color: #cd7f32; }
         .rank-num { color: #555; }
 
         .sys-btn {
-            margin: 30px 0; padding: 14px 35px; font-size: 16px; font-weight: bold;
+            padding: 14px 35px; font-size: 16px; font-weight: bold;
             color: #fff; background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
             border: none; border-radius: 30px; cursor: pointer;
             box-shadow: 0 4px 20px rgba(0, 210, 255, 0.3); transition: all 0.3s;
         }
         .sys-btn:hover { transform: scale(1.03); box-shadow: 0 6px 25px rgba(0, 210, 255, 0.5); }
+        
+        /* 歸零按鈕的專屬紅色樣式 */
+        .btn-reset {
+            background: linear-gradient(90deg, #ff416c 0%, #ff4b2b 100%);
+            box-shadow: 0 4px 20px rgba(255, 65, 108, 0.3);
+            display: none; /* 預設隱藏，模式2與3才會出現 */
+        }
+        .btn-reset:hover { box-shadow: 0 6px 25px rgba(255, 65, 108, 0.5); }
+
         #status { font-size: 14px; color: #666; margin-top: 5px; }
     </style>
 </head>
@@ -78,7 +88,11 @@
 
     <h1>🛡️ LifeGuard Pro Max 生態控制台</h1>
     <div id="status">系統就緒，等待連線安全通道...</div>
-    <button id="connectBtn" class="sys-btn">🔗 握手連接智慧手環</button>
+    
+    <div class="sys-bar">
+        <button id="connectBtn" class="sys-btn">🔗 握手連接智慧手環</button>
+        <button id="resetBtn" class="sys-btn btn-reset" onclick="resetData()">🔄 歸零當前數據</button>
+    </div>
     
     <div class="mode-toggles">
         <button id="btnMode1" class="mode-btn active" onclick="setMode(1)">1. 專業健康防護</button>
@@ -108,17 +122,7 @@
         <div class="leaderboard-panel">
             <h3>🏆 歷史十大爆發力排行榜</h3>
             <ul class="pwr-list" id="pwrLeaderboard">
-                <li class="pwr-item"><span class="rank-num">#01</span> <span>0.0 rad/s</span></li>
-                <li class="pwr-item"><span class="rank-num">#02</span> <span>0.0 rad/s</span></li>
-                <li class="pwr-item"><span class="rank-num">#03</span> <span>0.0 rad/s</span></li>
-                <li class="pwr-item"><span class="rank-num">#04</span> <span>0.0 rad/s</span></li>
-                <li class="pwr-item"><span class="rank-num">#05</span> <span>0.0 rad/s</span></li>
-                <li class="pwr-item"><span class="rank-num">#06</span> <span>0.0 rad/s</span></li>
-                <li class="pwr-item"><span class="rank-num">#07</span> <span>0.0 rad/s</span></li>
-                <li class="pwr-item"><span class="rank-num">#08</span> <span>0.0 rad/s</span></li>
-                <li class="pwr-item"><span class="rank-num">#09</span> <span>0.0 rad/s</span></li>
-                <li class="pwr-item"><span class="rank-num">#10</span> <span>0.0 rad/s</span></li>
-            </ul>
+                </ul>
         </div>
     </div>
 
@@ -131,8 +135,11 @@
         
         // 全域動態模式狀態與智慧資料儲存庫
         let activeMode = 1;
-        let pwrHistory = Array(10).fill(0.0); // 初始化前十強儲存陣列
-        let lastReceivedPwr = 0.0;           // 用於捕捉最高波峰的濾波暫存器
+        let pwrHistory = Array(10).fill(0.0); 
+        let lastReceivedPwr = 0.0;           
+
+        // 初始渲染排行榜
+        renderLeaderboard();
 
         document.getElementById('connectBtn').addEventListener('click', async () => {
             try {
@@ -155,7 +162,7 @@
                 bluetoothDevice.addEventListener('gattserverdisconnected', () => {
                     document.getElementById('status').innerText = "💔 設備離線，射頻廣播重啟中...";
                     document.getElementById('connectBtn').innerText = "🔗 重新建立通道";
-                    document.getElementById('connectBtn').style.background = "linear-gradient(90deg, #ff416c 0%, #ff4b2b 100%)";
+                    document.getElementById('connectBtn').style.background = "linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%)";
                 });
             } catch (error) {
                 document.getElementById('status').innerText = "❌ 握手失敗：" + error.message;
@@ -168,50 +175,73 @@
             const parts = dataString.split(',');
             
             parts.forEach(part => {
-                // ─── 模式 1：健康防護 ───
                 if (part.startsWith('R:')) document.getElementById('val1').innerText = part.substring(2);
                 if (part.startsWith('P:')) document.getElementById('val2').innerText = part.substring(2);
                 if (part.startsWith('H:')) document.getElementById('heartRate').innerText = part.substring(2);
                 
-                // ─── 模式 2：運動表現 (附帶歷史紀錄器) ───
                 if (part.startsWith('S:')) document.getElementById('val1').innerText = part.substring(2);
                 if (part.startsWith('W:')) {
                     let currentPwr = parseFloat(part.substring(2));
                     document.getElementById('val2').innerText = currentPwr.toFixed(1);
                     
-                    // 智慧排行榜捕捉邏輯：
-                    // 當數值大於暫存，代表動作正在發生並衝向峰值，不斷刷新暫存
                     if (currentPwr > lastReceivedPwr) {
                         lastReceivedPwr = currentPwr;
                     } 
-                    // 當手環演算法回傳 0.0，代表該次揮擊徹底結束，立刻把剛剛儲存的最高波峰塞入陣列排序！
                     else if (currentPwr === 0.0 && lastReceivedPwr > 1.0) {
                         updatePwrLeaderboard(lastReceivedPwr);
-                        lastReceivedPwr = 0.0; // 釋放暫存器迎接下一次出拳
+                        lastReceivedPwr = 0.0; 
                     }
                 }
 
-                // ─── 模式 3：計步綜合 ───
                 if (part.startsWith('K:')) document.getElementById('val1').innerText = part.substring(2);
                 if (part.startsWith('D:')) document.getElementById('val2').innerText = part.substring(2);
                 if (part.startsWith('C:')) document.getElementById('heartRate').innerText = part.substring(2);
             });
         }
 
-        // ✨ 新增：前十強降序動態更新引擎
+        // 前十強降序動態更新引擎
         function updatePwrLeaderboard(newPwr) {
-            // 如果新數值大於目前榜上的最低分數，才需要處理
             if (newPwr > pwrHistory[9]) {
-                pwrHistory.push(newPwr);           // 塞入新成績
-                pwrHistory.sort((a, b) => b - a);  // 降序（大到小）排列
-                pwrHistory.pop();                  // 踢除第 11 名
-                
-                // 刷新網頁排行榜 UI 列表
-                const listContainer = document.getElementById('pwrLeaderboard');
-                listContainer.innerHTML = "";
-                for(let i = 0; i < 10; i++) {
-                    const rankStr = String(i + 1).padStart(2, '0');
-                    listContainer.innerHTML += `<li class="pwr-item"><span class="rank-num">#${rankStr}</span> <span>${pwrHistory[i].toFixed(1)} rad/s</span></li>`;
+                pwrHistory.push(newPwr);           
+                pwrHistory.sort((a, b) => b - a);  
+                pwrHistory.pop();                  
+                renderLeaderboard();
+            }
+        }
+
+        // 渲染排行榜 UI
+        function renderLeaderboard() {
+            const listContainer = document.getElementById('pwrLeaderboard');
+            listContainer.innerHTML = "";
+            for(let i = 0; i < 10; i++) {
+                const rankStr = String(i + 1).padStart(2, '0');
+                listContainer.innerHTML += `<li class="pwr-item"><span class="rank-num">#${rankStr}</span> <span>${pwrHistory[i].toFixed(1)} rad/s</span></li>`;
+            }
+        }
+
+        // ✨ 新增：發送歸零指令與清除前端數據
+        async function resetData() {
+            // 1. 清除網頁前端的畫面數字與陣列
+            if (activeMode === 2) {
+                pwrHistory = Array(10).fill(0.0); // 清空歷史陣列
+                lastReceivedPwr = 0.0;
+                document.getElementById('val1').innerText = "0.0";
+                document.getElementById('val2').innerText = "0.0";
+                renderLeaderboard(); // 重新渲染全零的排行榜
+            } 
+            else if (activeMode === 3) {
+                document.getElementById('val1').innerText = "0";
+                document.getElementById('val2').innerText = "0.00";
+                document.getElementById('heartRate').innerText = "0.0";
+            }
+
+            // 2. 發送 'R' 指令給 ESP32-C3 讓硬體端也歸零
+            if (characteristic) {
+                try {
+                    const encoder = new TextEncoder();
+                    await characteristic.writeValue(encoder.encode("R"));
+                } catch (err) {
+                    console.error("歸零指令發送失敗", err);
                 }
             }
         }
@@ -224,7 +254,14 @@
             document.getElementById('btnMode3').classList.remove('active');
             document.getElementById('btnMode' + mode).classList.add('active');
 
-            // 根據模式優化卡片文字與計量單位
+            // ✨ 控制「歸零按鈕」的顯示與隱藏
+            const resetBtn = document.getElementById('resetBtn');
+            if (mode === 1) {
+                resetBtn.style.display = "none"; // 健康模式不需歸零
+            } else {
+                resetBtn.style.display = "inline-block"; // 模式2, 3 顯示歸零按鈕
+            }
+
             if (mode === 1) {
                 document.getElementById('title1').innerText = "翻滾角 (Roll)";   document.getElementById('unit1').innerText = "度 (Deg)";
                 document.getElementById('title2').innerText = "俯仰角 (Pitch)";  document.getElementById('unit2').innerText = "度 (Deg)";
@@ -238,14 +275,13 @@
                 document.getElementById('heartRate').innerText = "READY";
                 document.getElementById('card-heart').style.borderColor = "#262626";
             } 
-            else { // ✨ 模式 3 排版架構
+            else { 
                 document.getElementById('title1').innerText = "累計步數 (STEPS)"; document.getElementById('unit1').innerText = "步 (Steps)";
                 document.getElementById('title2').innerText = "步行距離 (DIST)";  document.getElementById('unit2').innerText = "公里 (Km)";
                 document.getElementById('titleHeart').innerText = "熱量消耗 (CAL)"; document.getElementById('unitHeart').innerText = "大卡 (Kcal)";
-                document.getElementById('card-heart').style.borderColor = "#ffa500"; // 暖橘色代表燃燒熱量
+                document.getElementById('card-heart').style.borderColor = "#ffa500"; 
             }
 
-            // 發送雙向藍牙同步指令
             if (characteristic) {
                 try {
                     const encoder = new TextEncoder();
