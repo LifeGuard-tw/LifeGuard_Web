@@ -12,13 +12,9 @@
         }
         h1 { color: #00d2ff; margin-bottom: 5px; font-size: 28px; text-shadow: 0 0 10px rgba(0,210,255,0.3); }
         
-        .sys-bar {
-            display: flex; gap: 15px; align-items: center; margin: 20px 0;
-        }
+        .sys-bar { display: flex; gap: 15px; align-items: center; margin: 20px 0; }
 
-        .mode-toggles {
-            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
-        }
+        .mode-toggles { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
         .mode-btn {
             background-color: #1a1a1a; color: #888; border: 2px solid #333;
             padding: 12px 24px; border-radius: 25px; cursor: pointer;
@@ -30,9 +26,7 @@
             box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
         }
 
-        .container {
-            display: flex; gap: 25px; max-width: 1000px; width: 100%; justify-content: center; flex-wrap: wrap;
-        }
+        .container { display: flex; gap: 25px; max-width: 1000px; width: 100%; justify-content: center; flex-wrap: wrap; }
         .dashboard { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; flex: 2; }
         
         .card {
@@ -46,13 +40,13 @@
         .card .value { font-size: 42px; font-weight: bold; color: #ffffff; margin-bottom: 5px; }
         .card .unit { font-size: 13px; color: #666666; }
         
-        #card-heart { border-color: #ff4757; box-shadow: 0 4px 15px rgba(255,71,87,0.1); }
-        #heartRate { color: #ff4757; }
+        /* 第三張多功能卡片的動態樣式 */
+        #card-dynamic { border-color: #ff4757; box-shadow: 0 4px 15px rgba(255,71,87,0.1); transition: border-color 0.4s; }
+        #dynamicValue { color: #ff4757; transition: color 0.4s; }
 
         .leaderboard-panel {
             background-color: #161616; border: 2px solid #262626; border-radius: 18px;
-            padding: 20px; width: 260px; box-shadow: 0 8px 20px rgba(0,0,0,0.6); flex: 1;
-            min-width: 240px;
+            padding: 20px; width: 260px; box-shadow: 0 8px 20px rgba(0,0,0,0.6); flex: 1; min-width: 240px;
         }
         .leaderboard-panel h3 { margin: 0 0 15px 0; color: #ffd700; text-align: center; font-size: 18px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .pwr-list { list-style: none; padding: 0; margin: 0; }
@@ -73,11 +67,9 @@
         }
         .sys-btn:hover { transform: scale(1.03); box-shadow: 0 6px 25px rgba(0, 210, 255, 0.5); }
         
-        /* 歸零按鈕的專屬紅色樣式 */
         .btn-reset {
             background: linear-gradient(90deg, #ff416c 0%, #ff4b2b 100%);
-            box-shadow: 0 4px 20px rgba(255, 65, 108, 0.3);
-            display: none; /* 預設隱藏，模式2與3才會出現 */
+            box-shadow: 0 4px 20px rgba(255, 65, 108, 0.3); display: none; 
         }
         .btn-reset:hover { box-shadow: 0 6px 25px rgba(255, 65, 108, 0.5); }
 
@@ -112,10 +104,10 @@
                 <div class="value" id="val2">0</div>
                 <div class="unit" id="unit2">度 (Deg)</div>
             </div>
-            <div class="card" id="card-heart">
-                <h2 id="titleHeart">即時心率</h2>
-                <div class="value" id="heartRate">0</div>
-                <div class="unit" id="unitHeart">BPM</div>
+            <div class="card" id="card-dynamic">
+                <h2 id="titleDynamic">即時心率</h2>
+                <div class="value" id="dynamicValue">0</div>
+                <div class="unit" id="unitDynamic">BPM</div>
             </div>
         </div>
 
@@ -133,12 +125,13 @@
         let bluetoothDevice;
         let characteristic;
         
-        // 全域動態模式狀態與智慧資料儲存庫
         let activeMode = 1;
         let pwrHistory = Array(10).fill(0.0); 
         let lastReceivedPwr = 0.0;           
+        
+        // 🛠️ 衝擊力學轉換係數 (您可以依實測力道感，將數字調大或調小)
+        const FORCE_CONVERSION_FACTOR = 15.0; 
 
-        // 初始渲染排行榜
         renderLeaderboard();
 
         document.getElementById('connectBtn').addEventListener('click', async () => {
@@ -169,7 +162,6 @@
             }
         });
 
-        // 核心：多變格式動態串流資料解算器
         function handleData(event) {
             const dataString = new TextDecoder('utf-8').decode(event.target.value); 
             const parts = dataString.split(',');
@@ -177,12 +169,16 @@
             parts.forEach(part => {
                 if (part.startsWith('R:')) document.getElementById('val1').innerText = part.substring(2);
                 if (part.startsWith('P:')) document.getElementById('val2').innerText = part.substring(2);
-                if (part.startsWith('H:')) document.getElementById('heartRate').innerText = part.substring(2);
+                if (part.startsWith('H:')) document.getElementById('dynamicValue').innerText = part.substring(2);
                 
                 if (part.startsWith('S:')) document.getElementById('val1').innerText = part.substring(2);
                 if (part.startsWith('W:')) {
                     let currentPwr = parseFloat(part.substring(2));
                     document.getElementById('val2').innerText = currentPwr.toFixed(1);
+                    
+                    // ✨ 核心升級：將角速度(PWR)即時換算為打擊力(Newtons)並顯示
+                    let estimatedForce = currentPwr * FORCE_CONVERSION_FACTOR;
+                    document.getElementById('dynamicValue').innerText = estimatedForce.toFixed(1);
                     
                     if (currentPwr > lastReceivedPwr) {
                         lastReceivedPwr = currentPwr;
@@ -195,11 +191,10 @@
 
                 if (part.startsWith('K:')) document.getElementById('val1').innerText = part.substring(2);
                 if (part.startsWith('D:')) document.getElementById('val2').innerText = part.substring(2);
-                if (part.startsWith('C:')) document.getElementById('heartRate').innerText = part.substring(2);
+                if (part.startsWith('C:')) document.getElementById('dynamicValue').innerText = part.substring(2);
             });
         }
 
-        // 前十強降序動態更新引擎
         function updatePwrLeaderboard(newPwr) {
             if (newPwr > pwrHistory[9]) {
                 pwrHistory.push(newPwr);           
@@ -209,33 +204,36 @@
             }
         }
 
-        // 渲染排行榜 UI
         function renderLeaderboard() {
             const listContainer = document.getElementById('pwrLeaderboard');
             listContainer.innerHTML = "";
             for(let i = 0; i < 10; i++) {
                 const rankStr = String(i + 1).padStart(2, '0');
-                listContainer.innerHTML += `<li class="pwr-item"><span class="rank-num">#${rankStr}</span> <span>${pwrHistory[i].toFixed(1)} rad/s</span></li>`;
+                // 排行榜同時顯示 PWR 與換算後的牛頓力
+                let forceStr = (pwrHistory[i] * FORCE_CONVERSION_FACTOR).toFixed(1);
+                listContainer.innerHTML += `
+                    <li class="pwr-item">
+                        <span class="rank-num">#${rankStr}</span> 
+                        <span>${pwrHistory[i].toFixed(1)} rad/s <span style="color:#00d2ff; font-size:12px;">(${forceStr} N)</span></span>
+                    </li>`;
             }
         }
 
-        // ✨ 新增：發送歸零指令與清除前端數據
         async function resetData() {
-            // 1. 清除網頁前端的畫面數字與陣列
             if (activeMode === 2) {
-                pwrHistory = Array(10).fill(0.0); // 清空歷史陣列
+                pwrHistory = Array(10).fill(0.0); 
                 lastReceivedPwr = 0.0;
                 document.getElementById('val1').innerText = "0.0";
                 document.getElementById('val2').innerText = "0.0";
-                renderLeaderboard(); // 重新渲染全零的排行榜
+                document.getElementById('dynamicValue').innerText = "0.0"; 
+                renderLeaderboard(); 
             } 
             else if (activeMode === 3) {
                 document.getElementById('val1').innerText = "0";
                 document.getElementById('val2').innerText = "0.00";
-                document.getElementById('heartRate').innerText = "0.0";
+                document.getElementById('dynamicValue').innerText = "0.0";
             }
 
-            // 2. 發送 'R' 指令給 ESP32-C3 讓硬體端也歸零
             if (characteristic) {
                 try {
                     const encoder = new TextEncoder();
@@ -246,7 +244,6 @@
             }
         }
 
-        // 模式動態 UI 排版渲染切換器
         async function setMode(mode) {
             activeMode = mode;
             document.getElementById('btnMode1').classList.remove('active');
@@ -254,32 +251,38 @@
             document.getElementById('btnMode3').classList.remove('active');
             document.getElementById('btnMode' + mode).classList.add('active');
 
-            // ✨ 控制「歸零按鈕」的顯示與隱藏
             const resetBtn = document.getElementById('resetBtn');
-            if (mode === 1) {
-                resetBtn.style.display = "none"; // 健康模式不需歸零
-            } else {
-                resetBtn.style.display = "inline-block"; // 模式2, 3 顯示歸零按鈕
-            }
+            const cardDynamic = document.getElementById('card-dynamic');
+            const dynamicValueText = document.getElementById('dynamicValue');
 
             if (mode === 1) {
+                resetBtn.style.display = "none";
                 document.getElementById('title1').innerText = "翻滾角 (Roll)";   document.getElementById('unit1').innerText = "度 (Deg)";
                 document.getElementById('title2').innerText = "俯仰角 (Pitch)";  document.getElementById('unit2').innerText = "度 (Deg)";
-                document.getElementById('titleHeart').innerText = "即時心率";     document.getElementById('unitHeart').innerText = "BPM";
-                document.getElementById('card-heart').style.borderColor = "#ff4757";
+                
+                document.getElementById('titleDynamic').innerText = "即時心率";     document.getElementById('unitDynamic').innerText = "BPM";
+                cardDynamic.style.borderColor = "#ff4757"; 
+                dynamicValueText.style.color = "#ff4757";
             } 
             else if (mode === 2) {
+                resetBtn.style.display = "inline-block";
                 document.getElementById('title1').innerText = "瞬時速率 (SPD)"; document.getElementById('unit1').innerText = "公尺/秒 (m/s)";
                 document.getElementById('title2').innerText = "爆發力 (PWR)";   document.getElementById('unit2').innerText = "徑度/秒 (rad/s)";
-                document.getElementById('titleHeart').innerText = "動作狀態";     document.getElementById('unitHeart').innerText = "狀態標籤";
-                document.getElementById('heartRate').innerText = "READY";
-                document.getElementById('card-heart').style.borderColor = "#262626";
+                
+                // ✨ 將第三張卡片精準改為「預估打擊力 (FORCE)」
+                document.getElementById('titleDynamic').innerText = "預估打擊力 (FORCE)"; document.getElementById('unitDynamic').innerText = "牛頓 (N)";
+                document.getElementById('dynamicValue').innerText = "0.0";
+                cardDynamic.style.borderColor = "#00d2ff"; 
+                dynamicValueText.style.color = "#00d2ff";
             } 
             else { 
+                resetBtn.style.display = "inline-block";
                 document.getElementById('title1').innerText = "累計步數 (STEPS)"; document.getElementById('unit1').innerText = "步 (Steps)";
                 document.getElementById('title2').innerText = "步行距離 (DIST)";  document.getElementById('unit2').innerText = "公里 (Km)";
-                document.getElementById('titleHeart').innerText = "熱量消耗 (CAL)"; document.getElementById('unitHeart').innerText = "大卡 (Kcal)";
-                document.getElementById('card-heart').style.borderColor = "#ffa500"; 
+                
+                document.getElementById('titleDynamic').innerText = "熱量消耗 (CAL)"; document.getElementById('unitDynamic').innerText = "大卡 (Kcal)";
+                cardDynamic.style.borderColor = "#ffa500"; 
+                dynamicValueText.style.color = "#ffa500";
             }
 
             if (characteristic) {
