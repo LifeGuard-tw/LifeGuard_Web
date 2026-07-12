@@ -153,8 +153,8 @@
                 document.getElementById('connectBtn').style.background = "#28a745";
 
                 bluetoothDevice.addEventListener('gattserverdisconnected', () => {
-                    document.getElementById('status').innerText = "💔 設備離線，射頻廣播重啟中...";
-                    document.getElementById('connectBtn').innerText = "🔗 重新建立通道";
+                    document.getElementById('status').innerText = "💔 設備離線...";
+                    document.getElementById('connectBtn').innerText = "🔗 重新建立連線";
                     document.getElementById('connectBtn').style.background = "linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%)";
                 });
             } catch (error) {
